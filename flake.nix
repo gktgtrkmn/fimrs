@@ -24,6 +24,7 @@
           pkgs.cargo-edit
           pkgs.cargo-watch
           pkgs.bacon
+          pkgs.sqlite
         ];
         shellHook = ''
           echo "Rust environment loaded!"

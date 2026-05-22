@@ -1,3 +1,5 @@
+mod db;
+
 use clap::{Parser, Subcommand};
 use core::{FileMeta, Snapshot, compare_snapshots};
 use std::collections::BTreeMap;
