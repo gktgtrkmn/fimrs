@@ -1,16 +1,11 @@
-/target/
+/*
 
-**/*.rs.bk
-
-/fim_stress_test/
-
-.fim_snapshot
-
-*.hi
-*.o
-/haskell_old_src/bin/
-
-.fim_snapshot.json
-/logs/
-
-.direnv/
+!/.envrc
+!/.gitignore
+!/Cargo.toml
+!/Cargo.lock
+!/flake.nix
+!/flake.lock
+!/agent/
+!/core/
+!/tui/
