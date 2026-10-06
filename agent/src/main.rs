@@ -13,7 +13,7 @@ use tracing::{debug, debug_span, error, info, warn};
 use tracing_appender::rolling;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
-const SNAPSHOT_FILE: &str = ".fim_snapshot.json";
+const DB_FILE: &str = ".fim_snapshot.db";
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "File Integrity Monitor", long_about = None)]
@@ -29,7 +29,7 @@ enum Command {
 }
 
 fn init_logging() -> tracing_appender::non_blocking::WorkerGuard {
-    let file_appender = rolling::daily("logs", "fim.log");
+    let file_appender = rolling::daily(".fim", "fim.log");
 
     let (non_blocking_writer, guard) = tracing_appender::non_blocking(file_appender);
 
@@ -68,7 +68,13 @@ fn build_snapshot<P: AsRef<Path>>(dir: P) -> std::io::Result<Snapshot> {
         .into_iter()
         .filter_map(Result::ok)
         .filter(|entry| entry.file_type().is_file())
-        .filter(|entry| entry.file_name() != SNAPSHOT_FILE)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_str()
+                .map(|name| !name.starts_with(DB_FILE))
+                .unwrap_or(true)
+        })
         .par_bridge()
         .filter_map(|entry| {
             let path: std::path::PathBuf = entry.path();
@@ -141,29 +147,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             };
 
-            let json: String = serde_json::to_string_pretty(&snap)?;
-
-            if let Err(e) = fs::write(SNAPSHOT_FILE, json) {
-                error!(error = ?e, file = SNAPSHOT_FILE, "Failed to write snapshot to disk");
-                return Err(e.into());
+            let mut db = match db::Db::open(DB_FILE) {
+                Ok(d) => d,
+                Err(e) => {
+                    error!(error = ?e, file = DB_FILE, "Failed to open database");
+                    return Err(e.into());
+                }
             };
 
+            if let Err(e) = db.save(&snap) {
+                error!(error = ?e, file = DB_FILE, "Failed to write snapshot to database");
+                return Err(e.into());
+            }
+
             info!(
-                file = SNAPSHOT_FILE,
+                file = DB_FILE,
                 scanned = snap.len(),
                 "Snapshot successfully saved"
             );
         }
         Command::Check { dir } => {
-            if !Path::new(SNAPSHOT_FILE).exists() {
+            if !Path::new(DB_FILE).exists() {
                 error!("No snapshot found. Run 'init' first");
                 return Err("No snapshot found".into());
             }
 
             info!(target_dir = dir, "Scanning current directory...");
 
-            let data: String = fs::read_to_string(SNAPSHOT_FILE)?;
-            let old_snap: Snapshot = serde_json::from_str(&data)?;
+            let db = db::Db::open(DB_FILE)?;
+            let old_snap: Snapshot = db.load_latest()?;
 
             let new_snap: BTreeMap<String, FileMeta> = build_snapshot(dir)?;
             let total_scanned = new_snap.len();
