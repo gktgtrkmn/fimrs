@@ -11,7 +11,7 @@ dunce = "1.0.5"
 jwalk = "0.8.1"
 log = "0.4.29"
 rayon = "1.11.0"
-serde_json = "1.0.149"
+rusqlite = { version = "0.39", features = ["bundled"] }
 tracing = "0.1.44"
 tracing-appender = "0.2.4"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
