@@ -1,12 +1,29 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileMeta {
     pub size: u64,
-    pub modified: SystemTime,
+    pub modified: i64,
     pub hash: Option<String>,
+}
+
+pub fn system_time_to_nanos(t: SystemTime) -> i64 {
+    match t.duration_since(UNIX_EPOCH) {
+        Ok(d) => i64::try_from(d.as_nanos()).unwrap_or(i64::MAX),
+        Err(e) => i64::try_from(e.duration().as_nanos())
+            .map(|n| -n)
+            .unwrap_or(i64::MIN),
+    }
+}
+
+pub fn nanos_to_system_time(nanos: i64) -> SystemTime {
+    if nanos >= 0 {
+        UNIX_EPOCH + Duration::from_nanos(nanos as u64)
+    } else {
+        UNIX_EPOCH - Duration::from_nanos(nanos.unsigned_abs())
+    }
 }
 
 pub type Snapshot = BTreeMap<String, FileMeta>;

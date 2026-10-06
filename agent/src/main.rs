@@ -114,7 +114,7 @@ fn build_snapshot<P: AsRef<Path>>(dir: P) -> std::io::Result<Snapshot> {
                 path_str,
                 FileMeta {
                     size,
-                    modified,
+                    modified: core::system_time_to_nanos(modified),
                     hash,
                 },
             ))
